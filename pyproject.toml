@@ -1,0 +1,79 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "target-optiply"
+version = "0.1.0"
+authors = [
+    { name = "Your Name", email = "your.email@example.com" },
+]
+description = "A Singer target for Optiply API"
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/target-optiply"
+"Bug Tracker" = "https://github.com/yourusername/target-optiply/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["target_optiply"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "target_optiply",
+]
+
+[tool.hatch.build.targets.editable]
+packages = ["target_optiply"]
+
+[tool.poetry]
+name = "target-optiply"
+version = "0.0.1"
+description = "`target-optiply` is a Singer target for Optiply, built with the Meltano Singer SDK."
+readme = "README.md"
+authors = ["Eduardo Sequeira <eduardosequeira@optiply.nl>"]
+keywords = [
+    "ELT",
+    "Optiply",
+]
+license = "Apache-2.0"
+
+[tool.poetry.dependencies]
+python = "<3.12,>=3.7.1"
+singer-sdk = "^0.34.0"
+requests = "^2.31.0"
+backoff = "^2.0.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.4.0"
+
+[tool.poetry.extras]
+s3 = ["fs-s3fs"]
+
+[tool.ruff]
+ignore = [
+    "ANN101",  # missing-type-self
+    "ANN102",  # missing-type-cls
+]
+select = ["ALL"]
+src = ["target_optiply"]
+target-version = "py37"
+
+[tool.ruff.flake8-annotations]
+allow-star-arg-any = true
+
+[tool.ruff.isort]
+known-first-party = ["target_optiply"]
+
+[tool.ruff.pydocstyle]
+convention = "google"
+
+[tool.poetry.scripts]
+# CLI declaration
+target-optiply = 'target_optiply.target:TargetOptiply.cli'
