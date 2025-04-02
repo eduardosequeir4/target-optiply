@@ -10,6 +10,7 @@ from target_optiply.sinks import (
     ProductSink,
     SupplierSink,
     SupplierProductSink,
+    BuyOrderSink,
     BuyOrderLineSink,
     SellOrderSink,
     SellOrderLineSink,
@@ -23,17 +24,17 @@ class TargetOptiply(Target):
 
     config_jsonschema = th.PropertiesList(
         th.Property(
-            "api_credentials",
+            "config",
             th.ObjectType(
                 th.Property(
-                    "username",
+                    "client_id",
                     th.StringType,
-                    description="Optiply API username",
+                    description="Optiply API client ID",
                 ),
                 th.Property(
-                    "password",
+                    "client_secret",
                     th.StringType,
-                    description="Optiply API password",
+                    description="Optiply API client secret",
                 ),
                 th.Property(
                     "account_id",
@@ -41,25 +42,31 @@ class TargetOptiply(Target):
                     description="Optiply account ID",
                 ),
                 th.Property(
-                    "coupling_id",
+                    "couplingId",
                     th.IntegerType,
                     description="Optiply coupling ID",
                 ),
+                th.Property(
+                    "base_url",
+                    th.StringType,
+                    default="https://dashboard.optiply.nl/api/v1",
+                    description="Optiply API URL",
+                ),
+                th.Property(
+                    "auth_url",
+                    th.StringType,
+                    default="https://dashboard.optiply.nl/api/auth/oauth/token",
+                    description="Optiply Auth URL",
+                ),
             ),
-            description="Optiply API credentials",
-        ),
-        th.Property(
-            "api_url",
-            th.StringType,
-            default="https://api-accept.optiply.com/v1",
-            description="Optiply API URL",
+            description="Optiply configuration",
         ),
     ).to_dict()
 
     def get_sink_class(self, stream_name: str) -> type[OptiplySink | ProductSink | SupplierSink | SupplierProductSink | BuyOrderLineSink | SellOrderSink | SellOrderLineSink]:
         """Get sink class for the given stream name."""
         if stream_name == "BuyOrders":
-            return OptiplySink
+            return BuyOrderSink
         elif stream_name == "Products":
             return ProductSink
         elif stream_name == "Suppliers":
