@@ -53,10 +53,10 @@ class OptiplyAuthenticator:
         """Update the access token."""
         try:
             # Get the credentials from config
-            client_id = self._config["config"].get("client_id")
-            client_secret = self._config["config"].get("client_secret")
-            username = self._config["config"].get("username")
-            password = self._config["config"].get("password")
+            client_id = self._config.get("client_id")
+            client_secret = self._config.get("client_secret")
+            username = self._config.get("username")
+            password = self._config.get("password")
 
             if not all([client_id, client_secret, username, password]):
                 raise ValueError("Missing required credentials in config")
@@ -66,7 +66,7 @@ class OptiplyAuthenticator:
             basic_token = b64encode(auth_string.encode()).decode()
 
             # Get the token URL from config or use default
-            token_url = self._config["config"].get("auth_url", "https://dashboard.optiply.nl/api/auth/oauth/token")
+            token_url = self._config.get("auth_url", "https://dashboard.optiply.nl/api/auth/oauth/token")
 
             # Make the token request
             response = requests.post(

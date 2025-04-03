@@ -52,7 +52,8 @@ class BaseOptiplySink(OptiplySink):
 
         # Construct the base URL with endpoint
         if context and context.get("http_method") == "PATCH":
-            record_id = context.get("record", {}).get("id")
+            record = context.get("record", {})
+            record_id = record.get("id")
             if record_id:
                 url = f"{base_url}/{endpoint}/{record_id}"
             else:
@@ -185,6 +186,42 @@ class BaseOptiplySink(OptiplySink):
         """Get the list of mandatory fields for this sink."""
         return []
 
+class ProductsSink(BaseOptiplySink):
+    """Products sink class."""
+
+    endpoint = "products"
+    field_mappings = {
+        "id": "id",
+        "name": "name",
+        "skuCode": "skuCode",
+        "price": "price",
+        "stockLevel": "stockLevel",
+        "status": "status"
+    }
+
+    def __init__(self, target: Any, stream_name: str, schema: Dict, key_properties: List[str]):
+        """Initialize the sink."""
+        super().__init__(target, stream_name, schema, key_properties)
+        # Override key_properties to make id optional for creation
+        self.key_properties = []
+
+    def _add_additional_attributes(self, record: dict, attributes: dict) -> None:
+        """Add any additional attributes from the record."""
+        # No additional attributes needed for products
+        pass
+
+    def get_url(self, context: Optional[dict] = None) -> str:
+        """Get the URL for the API request."""
+        base_url = self._get_base_url()
+        record = context.get("record", {}) if context else {}
+        
+        # If we have an ID, it's a PATCH request
+        if "id" in record:
+            return f"{base_url}/{record['id']}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
+        
+        # Otherwise it's a POST request
+        return f"{base_url}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
+
 class ProductSink(BaseOptiplySink):
     """Optiply target sink class for products."""
 
@@ -281,7 +318,7 @@ class SupplierProductSink(BaseOptiplySink):
         Returns:
             The list of mandatory fields.
         """
-        return ["supplierId", "productId"]
+        return ["supplierId", "productId", "name"]
 
     def get_field_mappings(self) -> Dict[str, str]:
         """Get the field mappings for this sink.
@@ -292,6 +329,7 @@ class SupplierProductSink(BaseOptiplySink):
         return {
             "supplierId": "supplierId",
             "productId": "productId",
+            "name": "name",
             "remoteId": "remoteId",
             "price": "price",
             "minimumPurchaseQuantity": "minimumPurchaseQuantity",

@@ -68,13 +68,13 @@ class OptiplySink(RecordSink):
         Returns:
             The URL for the endpoint.
         """
-        base_url = self.config["config"].get("base_url", "https://api.optiply.com/v1")
+        base_url = self.config.get("base_url", "https://api.optiply.com/v1")
         # Add accountId and couplingId as query parameters if they exist
         params = {}
-        if "account_id" in self.config["config"]:
-            params["accountId"] = self.config["config"]["account_id"]
-        if "coupling_id" in self.config["config"]:
-            params["couplingId"] = self.config["config"]["coupling_id"]
+        if "account_id" in self.config:
+            params["accountId"] = self.config["account_id"]
+        if "coupling_id" in self.config:
+            params["couplingId"] = self.config["coupling_id"]
         
         url = f"{base_url}/{endpoint}"
         if params:
@@ -139,13 +139,18 @@ class OptiplySink(RecordSink):
             context: Optional context dictionary
         """
         try:
+            # Determine HTTP method based on record content
+            http_method = "PATCH" if "id" in record else "POST"
+            if context is None:
+                context = {}
+            context["http_method"] = http_method
+            context["record"] = record
+
             payload = self._prepare_payload(record, context)
             if not payload:
                 self.logger.warning("Skipping record due to empty payload")
                 return
 
-            # Get the HTTP method from context, default to POST
-            http_method = context.get("http_method", "POST").upper() if context else "POST"
             self.logger.info(f"Request payload: {json.dumps(payload, indent=2)}")
             self.logger.info(f"Using {http_method} for record")
 

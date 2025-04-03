@@ -24,42 +24,67 @@ class TargetOptiply(Target):
 
     config_jsonschema = th.PropertiesList(
         th.Property(
-            "config",
+            "base_url",
+            th.StringType,
+            default="https://api.optiply.com/v1",
+            description="Optiply API base URL",
+        ),
+        th.Property(
+            "auth_url",
+            th.StringType,
+            default="https://dashboard.optiply.nl/api/auth/oauth/token",
+            description="Optiply Auth URL",
+        ),
+        th.Property(
+            "username",
+            th.StringType,
+            description="Optiply API username",
+        ),
+        th.Property(
+            "client_id",
+            th.StringType,
+            description="Optiply API client ID",
+        ),
+        th.Property(
+            "client_secret",
+            th.StringType,
+            description="Optiply API client secret",
+        ),
+        th.Property(
+            "password",
+            th.StringType,
+            description="Optiply API password",
+        ),
+        th.Property(
+            "account_id",
+            th.IntegerType,
+            description="Optiply account ID",
+        ),
+        th.Property(
+            "coupling_id",
+            th.IntegerType,
+            description="Optiply coupling ID",
+        ),
+        th.Property(
+            "start_date",
+            th.StringType,
+            description="Start date for data sync",
+        ),
+        th.Property(
+            "hotglue_metadata",
             th.ObjectType(
                 th.Property(
-                    "client_id",
-                    th.StringType,
-                    description="Optiply API client ID",
-                ),
-                th.Property(
-                    "client_secret",
-                    th.StringType,
-                    description="Optiply API client secret",
-                ),
-                th.Property(
-                    "account_id",
-                    th.IntegerType,
-                    description="Optiply account ID",
-                ),
-                th.Property(
-                    "couplingId",
-                    th.IntegerType,
-                    description="Optiply coupling ID",
-                ),
-                th.Property(
-                    "base_url",
-                    th.StringType,
-                    default="https://dashboard.optiply.nl/api/v1",
-                    description="Optiply API URL",
-                ),
-                th.Property(
-                    "auth_url",
-                    th.StringType,
-                    default="https://dashboard.optiply.nl/api/auth/oauth/token",
-                    description="Optiply Auth URL",
+                    "metadata",
+                    th.ObjectType(
+                        th.Property(
+                            "webshop_handle",
+                            th.StringType,
+                            description="Webshop handle",
+                        ),
+                    ),
                 ),
             ),
-            description="Optiply configuration",
+            description="Hotglue metadata",
         ),
     ).to_dict()
 
