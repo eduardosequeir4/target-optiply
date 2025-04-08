@@ -41,7 +41,6 @@ class BaseOptiplySink(OptiplySink):
         context: Optional[dict] = None,
     ) -> str:
         """Get the stream's API URL."""
-        base_url = self.url().split('?')[0].rstrip('/')  # Remove query params and trailing slash
         endpoint = self.endpoint
         
         # Extract query parameters from the original URL
@@ -55,11 +54,11 @@ class BaseOptiplySink(OptiplySink):
             record = context.get("record", {})
             record_id = record.get("id")
             if record_id:
-                url = f"{base_url}/{endpoint}/{record_id}"
+                url = f"{self.base_url}/{endpoint}/{record_id}"
             else:
-                url = f"{base_url}/{endpoint}"
+                url = f"{self.base_url}/{endpoint}"
         else:
-            url = f"{base_url}/{endpoint}"
+            url = f"{self.base_url}/{endpoint}"
 
         # Add query parameters if they exist
         if query_params:
@@ -212,15 +211,14 @@ class ProductsSink(BaseOptiplySink):
 
     def get_url(self, context: Optional[dict] = None) -> str:
         """Get the URL for the API request."""
-        base_url = self._get_base_url()
         record = context.get("record", {}) if context else {}
         
         # If we have an ID, it's a PATCH request
         if "id" in record:
-            return f"{base_url}/{record['id']}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
+            return f"{self.base_url}/{record['id']}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
         
         # Otherwise it's a POST request
-        return f"{base_url}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
+        return f"{self.base_url}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
 
 class ProductSink(BaseOptiplySink):
     """Optiply target sink class for products."""
