@@ -24,18 +24,6 @@ class TargetOptiply(Target):
 
     config_jsonschema = th.PropertiesList(
         th.Property(
-            "base_url",
-            th.StringType,
-            default="https://api.optiply.com/v1",
-            description="Optiply API base URL",
-        ),
-        th.Property(
-            "auth_url",
-            th.StringType,
-            default="https://dashboard.optiply.nl/api/auth/oauth/token",
-            description="Optiply Auth URL",
-        ),
-        th.Property(
             "username",
             th.StringType,
             description="Optiply API username",
@@ -87,6 +75,8 @@ class TargetOptiply(Target):
             description="Hotglue metadata",
         ),
     ).to_dict()
+
+    default_sink_class = OptiplySink
 
     def get_sink_class(self, stream_name: str) -> type[OptiplySink | ProductSink | SupplierSink | SupplierProductSink | BuyOrderLineSink | SellOrderSink | SellOrderLineSink]:
         """Get sink class for the given stream name."""

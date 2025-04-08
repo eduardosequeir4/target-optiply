@@ -127,7 +127,7 @@ class BaseOptiplySink(OptiplySink):
         """Add any additional attributes that are not covered by field mappings.
         
         This method can be overridden by subclasses to add custom attributes.
-        
+
         Args:
             record: The record to transform
             attributes: The attributes dictionary to update

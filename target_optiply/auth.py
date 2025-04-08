@@ -65,12 +65,9 @@ class OptiplyAuthenticator:
             auth_string = f"{client_id}:{client_secret}"
             basic_token = b64encode(auth_string.encode()).decode()
 
-            # Get the token URL from config or use default
-            token_url = self._config.get("auth_url", "https://dashboard.optiply.nl/api/auth/oauth/token")
-
             # Make the token request
             response = requests.post(
-                f"{token_url}?grant_type=password",
+                "https://dashboard.optiply.nl/api/auth/oauth/token?grant_type=password",
                 headers={
                     "Authorization": f"Basic {basic_token}",
                     "Content-Type": "application/x-www-form-urlencoded"

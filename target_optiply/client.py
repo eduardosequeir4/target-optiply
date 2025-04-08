@@ -27,6 +27,9 @@ class DateTimeEncoder(json.JSONEncoder):
 class OptiplySink(RecordSink):
     """Optiply target sink class."""
 
+    base_url = "https://api.optiply.com/v1"
+    auth_url = "https://dashboard.optiply.nl/api/auth/oauth/token"
+
     def __init__(
         self,
         target: Any,
@@ -68,7 +71,6 @@ class OptiplySink(RecordSink):
         Returns:
             The URL for the endpoint.
         """
-        base_url = self.config.get("base_url", "https://api.optiply.com/v1")
         # Add accountId and couplingId as query parameters if they exist
         params = {}
         if "account_id" in self.config:
@@ -76,7 +78,7 @@ class OptiplySink(RecordSink):
         if "coupling_id" in self.config:
             params["couplingId"] = self.config["coupling_id"]
         
-        url = f"{base_url}/{endpoint}"
+        url = f"{self.base_url}/{endpoint}"
         if params:
             query_string = "&".join(f"{k}={v}" for k, v in params.items())
             url = f"{url}?{query_string}"
