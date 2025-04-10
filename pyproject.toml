@@ -17,6 +17,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 
+[project.scripts]
+target-optiply = "target_optiply.target:TargetOptiply.cli"
+
 [project.urls]
 "Homepage" = "https://github.com/yourusername/target-optiply"
 "Bug Tracker" = "https://github.com/yourusername/target-optiply/issues"
