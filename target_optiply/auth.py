@@ -9,6 +9,8 @@ from typing import Any, Dict, Optional
 import logging
 import requests
 
+from target_optiply.client import OptiplySink
+
 logger = logging.getLogger(__name__)
 
 class OptiplyAuthenticator:
@@ -67,7 +69,7 @@ class OptiplyAuthenticator:
 
             # Make the token request
             response = requests.post(
-                "https://dashboard.optiply.nl/api/auth/oauth/token?grant_type=password",
+                f"{OptiplySink.auth_url}?grant_type=password",
                 headers={
                     "Authorization": f"Basic {basic_token}",
                     "Content-Type": "application/x-www-form-urlencoded"
