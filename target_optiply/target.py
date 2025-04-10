@@ -7,7 +7,7 @@ from singer_sdk.target_base import Target
 
 from target_optiply.sinks import (
     OptiplySink,
-    ProductSink,
+    ProductsSink,
     SupplierSink,
     SupplierProductSink,
     BuyOrderSink,
@@ -78,12 +78,12 @@ class TargetOptiply(Target):
 
     default_sink_class = OptiplySink
 
-    def get_sink_class(self, stream_name: str) -> type[OptiplySink | ProductSink | SupplierSink | SupplierProductSink | BuyOrderLineSink | SellOrderSink | SellOrderLineSink]:
+    def get_sink_class(self, stream_name: str) -> type[OptiplySink | ProductsSink | SupplierSink | SupplierProductSink | BuyOrderLineSink | SellOrderSink | SellOrderLineSink]:
         """Get sink class for the given stream name."""
         if stream_name == "BuyOrders":
             return BuyOrderSink
         elif stream_name == "Products":
-            return ProductSink
+            return ProductsSink
         elif stream_name == "Suppliers":
             return SupplierSink
         elif stream_name == "SupplierProducts":

@@ -195,14 +195,32 @@ class ProductsSink(BaseOptiplySink):
         "skuCode": "skuCode",
         "price": "price",
         "stockLevel": "stockLevel",
-        "status": "status"
+        "unlimitedStock": "unlimitedStock",
+        "status": "status",
+        "remoteDataSyncedToDate": "remoteDataSyncedToDate"
     }
 
     def __init__(self, target: Any, stream_name: str, schema: Dict, key_properties: List[str]):
         """Initialize the sink."""
         super().__init__(target, stream_name, schema, key_properties)
         # Override key_properties to make id optional for creation
-        self.key_properties = []
+        self._key_properties = []
+
+    def get_field_mappings(self) -> Dict[str, str]:
+        """Get the field mappings for this sink.
+
+        Returns:
+            The field mappings dictionary.
+        """
+        return self.field_mappings
+
+    def get_mandatory_fields(self) -> List[str]:
+        """Get the list of mandatory fields for this sink.
+
+        Returns:
+            The list of mandatory fields.
+        """
+        return ["name", "stockLevel", "unlimitedStock"]
 
     def _add_additional_attributes(self, record: dict, attributes: dict) -> None:
         """Add any additional attributes from the record."""
@@ -219,48 +237,6 @@ class ProductsSink(BaseOptiplySink):
         
         # Otherwise it's a POST request
         return f"{self.base_url}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
-
-class ProductSink(BaseOptiplySink):
-    """Optiply target sink class for products."""
-
-    def __init__(self, target: str, stream_name: str, schema: Dict, key_properties: List[str]):
-        super().__init__(target, stream_name, schema, key_properties)
-        self.endpoint = "products"  # Case-sensitive endpoint
-
-    def get_mandatory_fields(self) -> List[str]:
-        """Get the list of mandatory fields for this sink.
-
-        Returns:
-            The list of mandatory fields.
-        """
-        return ["name", "stockLevel", "unlimitedStock"]
-
-    def get_field_mappings(self) -> Dict[str, str]:
-        """Get the field mappings for this sink.
-
-        Returns:
-            The field mappings dictionary.
-        """
-        return {
-            "name": "name",
-            "skuCode": "skuCode",
-            "price": "price",
-            "stockLevel": "stockLevel",
-            "unlimitedStock": "unlimitedStock",
-            "status": "status",
-            "remoteDataSyncedToDate": "remoteDataSyncedToDate"
-        }
-
-    def _add_additional_attributes(self, record: Dict, attributes: Dict) -> None:
-        """Add any additional attributes that are not covered by field mappings.
-        
-        This method can be overridden by subclasses to add custom attributes.
-        
-        Args:
-            record: The record to transform
-            attributes: The attributes dictionary to update
-        """
-        pass
 
 class SupplierSink(BaseOptiplySink):
     """Optiply target sink class for suppliers."""
