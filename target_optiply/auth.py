@@ -1,7 +1,6 @@
 """Authentication module for Optiply target."""
 
 import json
-import os
 from datetime import datetime
 from typing import Optional
 from base64 import b64encode
@@ -25,7 +24,6 @@ class OptiplyAuthenticator:
         self._access_token = None
         self._token_expires_at = None
         self._refresh_token = None
-        self._auth_url = os.environ.get("optiply_dashboard_url", "https://dashboard.optiply.nl/api/auth/oauth/token")
 
     @property
     def auth_headers(self) -> dict:
@@ -69,7 +67,7 @@ class OptiplyAuthenticator:
 
             # Make the token request
             response = requests.post(
-                f"{self._auth_url}?grant_type=password",
+                "https://dashboard.optiply.nl/api/auth/oauth/token?grant_type=password",
                 headers={
                     "Authorization": f"Basic {basic_token}",
                     "Content-Type": "application/x-www-form-urlencoded"

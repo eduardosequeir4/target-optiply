@@ -365,10 +365,10 @@ class BuyOrderSink(BaseOptiplySink):
             attributes["supplierId"] = int(record["supplier_remoteId"])
 
         if "line_items" in record:
-            line_items = json.loads(record["line_items"])
+        line_items = json.loads(record["line_items"])
             buy_order_lines = []
-            total_value = 0
-            for item in line_items:
+        total_value = 0
+        for item in line_items:
                 subtotal_value = float(item["subtotalValue"])
                 total_value += subtotal_value
                 buy_order_lines.append({
