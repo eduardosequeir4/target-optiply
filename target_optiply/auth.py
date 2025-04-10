@@ -1,6 +1,7 @@
 """Authentication module for Optiply target."""
 
 import json
+import os
 from datetime import datetime
 from typing import Optional
 from base64 import b64encode
@@ -9,9 +10,11 @@ from typing import Any, Dict, Optional
 import logging
 import requests
 
-from target_optiply.client import OptiplySink
-
 logger = logging.getLogger(__name__)
+
+# Get the dashboard URL from environment variable
+OPTIPLY_DASHBOARD_URL = os.environ.get("optiply_dashboard_url", "https://dashboard.optiply.nl/api")
+AUTH_URL = f"{OPTIPLY_DASHBOARD_URL}/auth/oauth/token"
 
 class OptiplyAuthenticator:
     """API Authenticator for OAuth 2.0 flows."""
@@ -69,7 +72,7 @@ class OptiplyAuthenticator:
 
             # Make the token request
             response = requests.post(
-                f"{OptiplySink.auth_url}?grant_type=password",
+                f"{AUTH_URL}?grant_type=password",
                 headers={
                     "Authorization": f"Basic {basic_token}",
                     "Content-Type": "application/x-www-form-urlencoded"
