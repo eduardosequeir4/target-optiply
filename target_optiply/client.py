@@ -29,7 +29,8 @@ class OptiplySink(RecordSink):
     """Optiply target sink class."""
 
     base_url = os.environ.get("optiply_base_url", "https://api.optiply.com/v1")
-    auth_url = f"{os.environ.get('optiply_dashboard_url', 'https://dashboard.optiply.nl/api')}/auth/oauth/token"
+    dashboard_url = os.environ.get("optiply_dashboard_url", "https://dashboard.optiply.nl/api")
+    auth_url = f"{dashboard_url}/auth/oauth/token"
 
     def __init__(
         self,
