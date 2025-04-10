@@ -404,7 +404,6 @@ class BuyOrderSink(BaseOptiplySink):
                     }
                 })
             attributes["totalValue"] = str(total_value)
-
             attributes["buyOrderLines"] = buy_order_lines
 
 class BuyOrderLineSink(BaseOptiplySink):
