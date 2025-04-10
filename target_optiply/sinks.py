@@ -327,15 +327,19 @@ class SupplierProductSink(BaseOptiplySink):
         pass
 
 class BuyOrderSink(BaseOptiplySink):
-    """BuyOrder sink class."""
+    """Optiply target sink class for buy orders."""
 
     def __init__(self, target: str, stream_name: str, schema: Dict, key_properties: List[str]):
         super().__init__(target, stream_name, schema, key_properties)
         self.endpoint = "buyOrders"  # Case-sensitive endpoint
 
     def get_mandatory_fields(self) -> List[str]:
-        """Get the list of mandatory fields for this sink."""
-        return ["transaction_date", "supplier_remoteId", "line_items"]
+        """Get the list of mandatory fields for this sink.
+
+        Returns:
+            The list of mandatory fields.
+        """
+        return ["placed", "totalValue"]
 
     def get_field_mappings(self) -> Dict[str, str]:
         """Get the field mappings for this sink.
@@ -344,9 +348,11 @@ class BuyOrderSink(BaseOptiplySink):
             The field mappings dictionary.
         """
         return {
-            "transaction_date": "placed",
-            "supplier_remoteId": "supplierId",
-            "expectedDeliveryDate": "expectedDeliveryDate"
+            "placed": "placed",
+            "totalValue": "totalValue",
+            "remoteId": "remoteId",
+            "completed": "completed",
+            "status": "status"
         }
 
     def _add_additional_attributes(self, record: Dict, attributes: Dict) -> None:
@@ -365,10 +371,10 @@ class BuyOrderSink(BaseOptiplySink):
             attributes["supplierId"] = int(record["supplier_remoteId"])
 
         if "line_items" in record:
-        line_items = json.loads(record["line_items"])
+            line_items = json.loads(record["line_items"])
             buy_order_lines = []
-        total_value = 0
-        for item in line_items:
+            total_value = 0
+            for item in line_items:
                 subtotal_value = float(item["subtotalValue"])
                 total_value += subtotal_value
                 buy_order_lines.append({
