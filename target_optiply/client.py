@@ -5,6 +5,7 @@ from __future__ import annotations
 import backoff
 import json
 import logging
+import os
 from datetime import datetime
 import requests
 from singer_sdk.exceptions import FatalAPIError, RetriableAPIError
@@ -27,7 +28,7 @@ class DateTimeEncoder(json.JSONEncoder):
 class OptiplySink(RecordSink):
     """Optiply target sink class."""
 
-    base_url = "https://api.optiply.com/v1"
+    base_url = os.environ.get("optiply_base_url", "https://api.optiply.com/v1")
     auth_url = "https://dashboard.optiply.nl/api/auth/oauth/token"
 
     def __init__(
