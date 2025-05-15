@@ -233,10 +233,10 @@ class ProductsSink(BaseOptiplySink):
         
         # If we have an ID, it's a PATCH request
         if "id" in record:
-            return f"{self.base_url}/{record['id']}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
+            return f"{self.base_url}/{self.endpoint}/{record['id']}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
         
         # Otherwise it's a POST request
-        return f"{self.base_url}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
+        return f"{self.base_url}/{self.endpoint}?accountId={self.config['account_id']}&couplingId={self.config['coupling_id']}"
 
 class SupplierSink(BaseOptiplySink):
     """Optiply target sink class for suppliers."""
