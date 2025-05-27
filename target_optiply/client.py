@@ -62,28 +62,6 @@ class OptiplySink(RecordSink):
             self._authenticator = OptiplyAuthenticator(self.config)
         return self._authenticator
 
-    def url(self, endpoint: str = "") -> str:
-        """Get the URL for the given endpoint.
-
-        Args:
-            endpoint: The endpoint to get the URL for.
-
-        Returns:
-            The URL for the endpoint.
-        """
-        # Add accountId and couplingId as query parameters if they exist
-        params = {}
-        if "account_id" in self.config:
-            params["accountId"] = self.config["account_id"]
-        if "coupling_id" in self.config:
-            params["couplingId"] = self.config["coupling_id"]
-        
-        url = f"{self.base_url}/{endpoint}"
-        if params:
-            query_string = "&".join(f"{k}={v}" for k, v in params.items())
-            url = f"{url}?{query_string}"
-        return url
-
     def http_headers(self) -> Dict[str, str]:
         """Get the HTTP headers for the request.
 
@@ -133,86 +111,24 @@ class OptiplySink(RecordSink):
         self.validate_response(response)
         return response
 
-    def process_record(self, record: Dict, context: Dict = None) -> None:
-        """Process the record.
+    def url(self, endpoint: str = "") -> str:
+        """Get the URL for the given endpoint.
 
         Args:
-            record: The record to process
-            context: Optional context dictionary
-        """
-        try:
-            # Determine HTTP method based on record content
-            http_method = "PATCH" if "id" in record else "POST"
-            if context is None:
-                context = {}
-            context["http_method"] = http_method
-            context["record"] = record
-
-            payload = self._prepare_payload(record, context)
-            if not payload:
-                self.logger.warning("Skipping record due to empty payload")
-                return
-
-            self.logger.info(f"Request payload: {json.dumps(payload, indent=2)}")
-            self.logger.info(f"Using {http_method} for record")
-
-            # Make the request
-            try:
-                response = self._request(
-                    http_method=http_method,
-                    endpoint=self.endpoint,
-                    request_data=payload
-                )
-                self.logger.info(f"Response status: {response.status_code}")
-                self.logger.info(f"Response body: {response.text}")
-
-                if not response.ok:
-                    self.logger.error(f"Error response from API: {response.text}")
-                    return
-
-            except Exception as e:
-                self.logger.error(f"API request failed: {str(e)}")
-                return
-
-        except ValueError as e:
-            # Log the error and continue processing other records
-            self.logger.error(f"Error processing record: {str(e)}")
-            try:
-                # Convert datetime objects to ISO format strings for logging
-                record_copy = {}
-                for key, value in record.items():
-                    if isinstance(value, datetime):
-                        record_copy[key] = value.isoformat()
-                    else:
-                        record_copy[key] = value
-                self.logger.debug(f"Problematic record: {json.dumps(record_copy, indent=2)}")
-            except Exception as log_error:
-                self.logger.debug(f"Could not log record details: {str(log_error)}")
-            return
-        except Exception as e:
-            # Log unexpected errors and continue
-            self.logger.error(f"Unexpected error processing record: {str(e)}")
-            try:
-                # Convert datetime objects to ISO format strings for logging
-                record_copy = {}
-                for key, value in record.items():
-                    if isinstance(value, datetime):
-                        record_copy[key] = value.isoformat()
-                    else:
-                        record_copy[key] = value
-                self.logger.debug(f"Problematic record: {json.dumps(record_copy, indent=2)}")
-            except Exception as log_error:
-                self.logger.debug(f"Could not log record details: {str(log_error)}")
-            return
-
-    def _prepare_payload(self, record: dict, context: dict) -> dict:
-        """Prepare the payload for the Optiply API.
-
-        Args:
-            record: The record to prepare.
-            context: The context for the record.
+            endpoint: The endpoint to get the URL for.
 
         Returns:
-            The prepared payload.
+            The URL for the endpoint.
         """
-        raise NotImplementedError("Subclasses must implement _prepare_payload")
+        # Add accountId and couplingId as query parameters if they exist
+        params = {}
+        if "account_id" in self.config:
+            params["accountId"] = self.config["account_id"]
+        if "coupling_id" in self.config:
+            params["couplingId"] = self.config["coupling_id"]
+        
+        url = f"{self.base_url}/{endpoint}"
+        if params:
+            query_string = "&".join(f"{k}={v}" for k, v in params.items())
+            url = f"{url}?{query_string}"
+        return url
