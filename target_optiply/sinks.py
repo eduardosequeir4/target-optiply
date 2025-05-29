@@ -201,14 +201,21 @@ class ProductsSink(BaseOptiplySink):
     field_mappings = {
         "name": "name",
         "skuCode": "skuCode",
+        "eanCode": "eanCode",
         "articleCode": "articleCode",
         "price": "price",
-        "stockLevel": "stockLevel",
         "unlimitedStock": "unlimitedStock",
+        "stockLevel": "stockLevel",
         "notBeingBought": "notBeingBought",
+        "resumingPurchase": "resumingPurchase",
+        "status": "status",
         "assembled": "assembled",
         "minimumStock": "minimumStock",
-        "status": "status"
+        "maximumStock": "maximumStock",
+        "ignored": "ignored",
+        "manualServiceLevel": "manualServiceLevel",
+        "createdAtRemote": "createdAtRemote",
+        "stockMeasurementUnit": "stockMeasurementUnit"
     }
 
     def __init__(self, target: Any, stream_name: str, schema: Dict, key_properties: List[str]):
@@ -229,7 +236,7 @@ class SupplierSink(BaseOptiplySink):
     """Optiply target sink class for suppliers."""
 
     endpoint = "suppliers"
-    field_mappings = {
+    field_mapping = {
         "name": "name",
         "emails": "emails",
         "minimumOrderValue": "minimumOrderValue",
@@ -243,7 +250,10 @@ class SupplierSink(BaseOptiplySink):
         "backorderThreshold": "backorderThreshold",
         "backordersReaction": "backordersReaction",
         "maxLoadCapacity": "maxLoadCapacity",
-        "containerVolume": "containerVolume"
+        "containerVolume": "containerVolume",
+        "ignored": "ignored",
+        "globalLocationNumber": "globalLocationNumber",
+        "type": "type"
     }
 
     def get_mandatory_fields(self) -> List[str]:
@@ -295,7 +305,9 @@ class BuyOrderSink(BaseOptiplySink):
         "completed": "completed",
         "expectedDeliveryDate": "expectedDeliveryDate",
         "totalValue": "totalValue",
-        "supplierId": "supplierId"
+        "supplierId": "supplierId",
+        "accountId": "accountId",
+        "assembly": "assembly"
     }
 
     def get_mandatory_fields(self) -> List[str]:
@@ -360,7 +372,6 @@ class SellOrderSink(BaseOptiplySink):
     endpoint = "sellOrders"
     field_mappings = {
         "placed": "placed",
-        "completed": "completed",
         "totalValue": "totalValue"
     }
 
