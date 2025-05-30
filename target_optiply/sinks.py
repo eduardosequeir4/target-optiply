@@ -236,7 +236,7 @@ class SupplierSink(BaseOptiplySink):
     """Optiply target sink class for suppliers."""
 
     endpoint = "suppliers"
-    field_mapping = {
+    field_mappings = {
         "name": "name",
         "emails": "emails",
         "minimumOrderValue": "minimumOrderValue",
