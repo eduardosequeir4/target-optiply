@@ -135,12 +135,51 @@ class BaseOptiplySink(OptiplySink):
         """Add any additional attributes that are not covered by field mappings.
         
         This method can be overridden by subclasses to add custom attributes.
-
+        
         Args:
             record: The record to transform
             attributes: The attributes dictionary to update
         """
-        pass
+        # Handle emails field - convert from JSON string to array if present
+        if "emails" in record and record["emails"] is not None:
+            try:
+                attributes["emails"] = json.loads(record["emails"])
+            except json.JSONDecodeError:
+                self.logger.warning(f"Could not parse emails JSON string: {record['emails']}")
+                attributes["emails"] = []
+
+        # Convert boolean strings to actual booleans
+        boolean_fields = ["reactingToLostSales", "backorders", "ignored"]
+        for field in boolean_fields:
+            if field in record and isinstance(record[field], str):
+                attributes[field] = record[field].lower() == "true"
+
+        # Convert numeric strings to actual numbers
+        numeric_fields = [
+            "minimumOrderValue", "fixedCosts", "deliveryTime", 
+            "userReplenishmentPeriod", "lostSalesReaction", 
+            "lostSalesMovReaction", "backorderThreshold", 
+            "backordersReaction", "maxLoadCapacity", "containerVolume"
+        ]
+        for field in numeric_fields:
+            if field in record and isinstance(record[field], str):
+                try:
+                    attributes[field] = float(record[field])
+                except ValueError:
+                    self.logger.warning(f"Could not convert {field} to number: {record[field]}")
+
+        # Validate type field
+        if "type" in record and record["type"] not in ["vendor", "producer"]:
+            self.logger.warning(f"Invalid type value: {record['type']}. Must be 'vendor' or 'producer'")
+            attributes["type"] = "vendor"  # Default to vendor if invalid
+
+        # Validate globalLocationNumber length
+        if "globalLocationNumber" in record and len(record["globalLocationNumber"]) != 13:
+            self.logger.warning(f"Invalid globalLocationNumber length: {len(record['globalLocationNumber'])}. Must be 13 characters")
+            attributes.pop("globalLocationNumber", None)  # Remove if invalid
+
+        # Remove remoteDataSyncedToDate as it's not accepted by the API
+        attributes.pop("remoteDataSyncedToDate", None)
 
     def process_record(self, record: Dict, context: Dict = None) -> None:
         """Process a record."""
@@ -187,7 +226,10 @@ class BaseOptiplySink(OptiplySink):
         self.logger.info(f"Response body: {response.text}")
 
         # Validate the response
-        if response.status_code >= 400:
+        if response.status_code == 404:
+            self.logger.warning(f"Record not found (404): {record.get('id')}. Skipping to next record.")
+            return
+        elif response.status_code >= 400:
             raise FatalAPIError(f"Client error: {response.text}")
 
     def get_mandatory_fields(self) -> List[str]:
@@ -273,8 +315,8 @@ class SupplierSink(BaseOptiplySink):
             record: The record to transform
             attributes: The attributes dictionary to update
         """
-        # Handle emails field - convert from JSON string to array
-        if "emails" in record and isinstance(record["emails"], str):
+        # Handle emails field - convert from JSON string to array if present
+        if "emails" in record and record["emails"] is not None:
             try:
                 attributes["emails"] = json.loads(record["emails"])
             except json.JSONDecodeError:
