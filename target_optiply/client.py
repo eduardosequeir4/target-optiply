@@ -85,6 +85,9 @@ class OptiplySink(RecordSink):
         """
         if response.status_code >= 500:
             raise RetriableAPIError(f"Server error: {response.text}")
+        elif response.status_code == 404:
+            logger.warning(f"Resource not found (404): {response.url}")
+            return
         elif response.status_code >= 400:
             raise FatalAPIError(f"Client error: {response.text}")
 
