@@ -34,10 +34,22 @@ class BaseOptiplySink(OptiplySink):
 
     endpoint = None
     field_mappings = {}
+    _processed_records = []
 
     def __init__(self, target: str, stream_name: str, schema: Dict, key_properties: List[str]):
         super().__init__(target, stream_name, schema, key_properties)
         self.endpoint = self.stream_name.lower() if not self.endpoint else self.endpoint
+        self._processed_records = []
+
+    @property
+    def success_count(self) -> int:
+        """Get the number of successfully processed records."""
+        return sum(1 for record in self._processed_records if record.get('success', False))
+
+    @property
+    def failure_count(self) -> int:
+        """Get the number of failed records."""
+        return sum(1 for record in self._processed_records if not record.get('success', False))
 
     def get_url(
         self,
@@ -154,19 +166,38 @@ class BaseOptiplySink(OptiplySink):
             if field in record and isinstance(record[field], str):
                 attributes[field] = record[field].lower() == "true"
 
-        # Convert numeric strings to actual numbers
-        numeric_fields = [
-            "minimumOrderValue", "fixedCosts", "deliveryTime", 
-            "userReplenishmentPeriod", "lostSalesReaction", 
-            "lostSalesMovReaction", "backorderThreshold", 
-            "backordersReaction", "maxLoadCapacity", "containerVolume"
+        # Fields that should be integers
+        integer_fields = [
+            "deliveryTime",
+            "userReplenishmentPeriod",
+            "lostSalesReaction",
+            "lostSalesMovReaction",
+            "backorderThreshold",
+            "backordersReaction",
+            "maxLoadCapacity",
+            "containerVolume"
         ]
-        for field in numeric_fields:
-            if field in record and isinstance(record[field], str):
+        for field in integer_fields:
+            if field in record and record[field] is not None:
+                try:
+                    # First convert to float to handle decimal strings, then to int
+                    attributes[field] = int(float(record[field]))
+                except (ValueError, TypeError):
+                    self.logger.warning(f"Could not convert {field} to integer: {record[field]}")
+                    attributes.pop(field, None)
+
+        # Fields that should be floats
+        float_fields = [
+            "minimumOrderValue",
+            "fixedCosts"
+        ]
+        for field in float_fields:
+            if field in record and record[field] is not None:
                 try:
                     attributes[field] = float(record[field])
-                except ValueError:
-                    self.logger.warning(f"Could not convert {field} to number: {record[field]}")
+                except (ValueError, TypeError):
+                    self.logger.warning(f"Could not convert {field} to float: {record[field]}")
+                    attributes.pop(field, None)
 
         # Validate type field
         if "type" in record and record["type"] not in ["vendor", "producer"]:
@@ -183,58 +214,143 @@ class BaseOptiplySink(OptiplySink):
 
     def process_record(self, record: Dict, context: Dict = None) -> None:
         """Process a record."""
-        # Create context if not provided
-        if context is None:
-            context = {}
+        try:
+            # Create context if not provided
+            if context is None:
+                context = {}
 
-        # Set http_method based on presence of id field
-        http_method = "PATCH" if "id" in record else "POST"
-        context["http_method"] = http_method
-        context["record"] = record  # Add record to context for URL construction
-        self.logger.info(f"HTTP Method from context: {http_method}")
-        self.logger.info(f"Context: {context}")
-        self.logger.info(f"Record: {record}")
+            # Set http_method based on presence of id field
+            http_method = "PATCH" if "id" in record else "POST"
+            context["http_method"] = http_method
+            context["record"] = record  # Add record to context for URL construction
+            
+            # Log record processing
+            self.logger.info(f"Processing record for {self.stream_name} (ID: {record.get('id')})")
 
-        # For POST requests, check mandatory fields
-        if http_method == "POST":
-            mandatory_fields = self.get_mandatory_fields()
-            missing_fields = []
-            for field in mandatory_fields:
-                if field not in record or record[field] is None or (isinstance(record[field], str) and not record[field].strip()):
-                    missing_fields.append(field)
-            if missing_fields:
-                self.logger.error(f"Record skipped due to missing mandatory fields: {', '.join(missing_fields)}")
-                return None
+            # For POST requests, check mandatory fields
+            if http_method == "POST":
+                mandatory_fields = self.get_mandatory_fields()
+                missing_fields = []
+                for field in mandatory_fields:
+                    if field not in record or record[field] is None or (isinstance(record[field], str) and not record[field].strip()):
+                        missing_fields.append(field)
+                if missing_fields:
+                    error_msg = f"Record skipped due to missing mandatory fields: {', '.join(missing_fields)}"
+                    self.logger.error(error_msg)
+                    self._processed_records.append({
+                        "hash": self._generate_record_hash(record),
+                        "success": False,
+                        "id": record.get('id'),
+                        "externalId": record.get('externalId'),
+                        "error": error_msg
+                    })
+                    return None
 
-        # Prepare the payload
-        payload = self._prepare_payload(context, record)
-        if not payload:
-            return
+            # Prepare the payload
+            payload = self._prepare_payload(context, record)
+            if not payload:
+                error_msg = "Failed to prepare payload"
+                self.logger.error(error_msg)
+                self._processed_records.append({
+                    "hash": self._generate_record_hash(record),
+                    "success": False,
+                    "id": record.get('id'),
+                    "externalId": record.get('externalId'),
+                    "error": error_msg
+                })
+                return
 
-        # Get the URL for the request
-        url = self.get_url(context)
-        self.logger.info(f"Request URL: {url}")
+            # Get the URL for the request
+            url = self.get_url(context)
+            self.logger.info(f"Making {http_method} request to: {url}")
 
-        # Make the request
-        response = requests.request(
-            method=http_method,
-            url=url,
-            headers={**self.http_headers(), **self.authenticator.auth_headers},
-            json=payload
-        )
-        self.logger.info(f"Response status: {response.status_code}")
-        self.logger.info(f"Response body: {response.text}")
+            # Make the request
+            response = requests.request(
+                method=http_method,
+                url=url,
+                headers={**self.http_headers(), **self.authenticator.auth_headers},
+                json=payload
+            )
+            self.logger.info(f"Response status: {response.status_code}")
+            self.logger.info(f"Response body: {response.text}")
 
-        # Validate the response
-        if response.status_code == 404:
-            self.logger.warning(f"Record not found (404): {record.get('id')}. Skipping to next record.")
-            return
-        elif response.status_code >= 400:
-            raise FatalAPIError(f"Client error: {response.text}")
+            # Validate the response
+            if response.status_code == 404:
+                error_msg = f"Record not found (404): {record.get('id')}"
+                self.logger.warning(error_msg)
+                self._processed_records.append({
+                    "hash": self._generate_record_hash(record),
+                    "success": False,
+                    "id": record.get('id'),
+                    "externalId": record.get('externalId'),
+                    "error": error_msg
+                })
+                return
+            elif response.status_code >= 400:
+                error_msg = f"Request failed with status {response.status_code}: {response.text}"
+                self.logger.error(error_msg)
+                self._processed_records.append({
+                    "hash": self._generate_record_hash(record),
+                    "success": False,
+                    "id": record.get('id'),
+                    "externalId": record.get('externalId'),
+                    "error": error_msg
+                })
+                return
+
+            # If we get here, the record was processed successfully
+            self._processed_records.append({
+                "hash": self._generate_record_hash(record),
+                "success": True,
+                "id": record.get('id'),
+                "externalId": record.get('externalId')
+            })
+
+        except Exception as e:
+            error_msg = f"Error processing record: {str(e)}"
+            self.logger.error(error_msg)
+            self._processed_records.append({
+                "hash": self._generate_record_hash(record),
+                "success": False,
+                "id": record.get('id'),
+                "externalId": record.get('externalId'),
+                "error": error_msg
+            })
+
+    def _generate_record_hash(self, record: Dict) -> str:
+        """Generate a hash for the record to track its state.
+        
+        Args:
+            record: The record to generate a hash for.
+            
+        Returns:
+            A hash string representing the record's state.
+        """
+        import hashlib
+        # Create a string representation of the record's key fields
+        key_fields = sorted(record.items())
+        record_str = json.dumps(key_fields, sort_keys=True)
+        # Generate SHA-256 hash
+        return hashlib.sha256(record_str.encode()).hexdigest()
 
     def get_mandatory_fields(self) -> List[str]:
         """Get the list of mandatory fields for this sink."""
         return []
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get statistics about processed records.
+
+        Returns:
+            Dictionary containing success, failure counts, and processed records details.
+        """
+        success_count = self.success_count
+        failure_count = self.failure_count
+        return {
+            "success": success_count,
+            "failure": failure_count,
+            "total": success_count + failure_count,
+            "processed_records": self._processed_records
+        }
 
 class ProductsSink(BaseOptiplySink):
     """Products sink class."""
@@ -329,19 +445,38 @@ class SupplierSink(BaseOptiplySink):
             if field in record and isinstance(record[field], str):
                 attributes[field] = record[field].lower() == "true"
 
-        # Convert numeric strings to actual numbers
-        numeric_fields = [
-            "minimumOrderValue", "fixedCosts", "deliveryTime", 
-            "userReplenishmentPeriod", "lostSalesReaction", 
-            "lostSalesMovReaction", "backorderThreshold", 
-            "backordersReaction", "maxLoadCapacity", "containerVolume"
+        # Fields that should be integers
+        integer_fields = [
+            "deliveryTime",
+            "userReplenishmentPeriod",
+            "lostSalesReaction",
+            "lostSalesMovReaction",
+            "backorderThreshold",
+            "backordersReaction",
+            "maxLoadCapacity",
+            "containerVolume"
         ]
-        for field in numeric_fields:
-            if field in record and isinstance(record[field], str):
+        for field in integer_fields:
+            if field in record and record[field] is not None:
+                try:
+                    # First convert to float to handle decimal strings, then to int
+                    attributes[field] = int(float(record[field]))
+                except (ValueError, TypeError):
+                    self.logger.warning(f"Could not convert {field} to integer: {record[field]}")
+                    attributes.pop(field, None)
+
+        # Fields that should be floats
+        float_fields = [
+            "minimumOrderValue",
+            "fixedCosts"
+        ]
+        for field in float_fields:
+            if field in record and record[field] is not None:
                 try:
                     attributes[field] = float(record[field])
-                except ValueError:
-                    self.logger.warning(f"Could not convert {field} to number: {record[field]}")
+                except (ValueError, TypeError):
+                    self.logger.warning(f"Could not convert {field} to float: {record[field]}")
+                    attributes.pop(field, None)
 
         # Validate type field
         if "type" in record and record["type"] not in ["vendor", "producer"]:
