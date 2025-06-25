@@ -7,6 +7,7 @@ import json
 import logging
 import os
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 import requests
 from singer_sdk.exceptions import FatalAPIError, RetriableAPIError
 
@@ -88,6 +89,9 @@ class OptiplySink(RecordSink):
         elif response.status_code == 404:
             logger.warning(f"Resource not found (404): {response.url}")
             return
+        elif response.status_code == 401:
+            # 401 errors are handled in _request method with token refresh
+            raise FatalAPIError(f"Authentication failed after token refresh: {response.text}")
         elif response.status_code >= 400:
             raise FatalAPIError(f"Client error: {response.text}")
 
@@ -99,11 +103,12 @@ class OptiplySink(RecordSink):
     )
     def _request(
         self, http_method, endpoint, params=None, request_data=None, headers=None
-    ) -> requests.PreparedRequest:
-        """Prepare a request object."""
+    ) -> requests.Response:
+        """Make a request with automatic token refresh on 401 errors."""
         url = self.url(endpoint)
         headers = {**self.http_headers(), **self.authenticator.auth_headers}
 
+        # First attempt
         response = requests.request(
             method=http_method,
             url=url,
@@ -111,6 +116,36 @@ class OptiplySink(RecordSink):
             headers=headers,
             json=request_data
         )
+        
+        # Handle 401 errors by refreshing token and retrying
+        if response.status_code == 401:
+            logger.info("Received 401 error, attempting to refresh token and retry")
+            try:
+                # Force token refresh using the authenticator method
+                self._authenticator.force_refresh()
+                
+                # Get fresh headers with new token
+                headers = {**self.http_headers(), **self.authenticator.auth_headers}
+                
+                # Retry the request with new token
+                response = requests.request(
+                    method=http_method,
+                    url=url,
+                    params=params,
+                    headers=headers,
+                    json=request_data
+                )
+                logger.info("Successfully retried request after token refresh")
+                
+                # If we still get 401 after refresh, it's a fatal error
+                if response.status_code == 401:
+                    logger.error("Still getting 401 after token refresh - authentication failed")
+                    raise FatalAPIError(f"Authentication failed after token refresh: {response.text}")
+                    
+            except Exception as e:
+                logger.error(f"Failed to refresh token and retry: {str(e)}")
+                raise
+        
         self.validate_response(response)
         return response
 

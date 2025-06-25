@@ -57,6 +57,8 @@ class OptiplyAuthenticator:
     def update_access_token(self) -> None:
         """Update the access token."""
         try:
+            logger.info("Starting token refresh process")
+            
             # Get the credentials from config
             client_id = self._config.get("client_id")
             client_secret = self._config.get("client_secret")
@@ -70,6 +72,8 @@ class OptiplyAuthenticator:
             auth_string = f"{client_id}:{client_secret}"
             basic_token = b64encode(auth_string.encode()).decode()
 
+            logger.info(f"Making token request to: {AUTH_URL}")
+            
             # Make the token request
             response = requests.post(
                 f"{AUTH_URL}?grant_type=password",
@@ -107,3 +111,10 @@ class OptiplyAuthenticator:
             None since we use headers for authentication.
         """
         return None
+
+    def force_refresh(self) -> None:
+        """Force a token refresh by clearing current token."""
+        logger.info("Forcing token refresh")
+        self._access_token = None
+        self._token_expires_at = None
+        self.update_access_token()

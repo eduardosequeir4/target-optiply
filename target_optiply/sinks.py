@@ -264,12 +264,17 @@ class BaseOptiplySink(OptiplySink):
             url = self.get_url(context)
             self.logger.info(f"Making {http_method} request to: {url}")
 
-            # Make the request
-            response = requests.request(
-                method=http_method,
-                url=url,
-                headers={**self.http_headers(), **self.authenticator.auth_headers},
-                json=payload
+            # Make the request using the _request method to handle 401 errors with token refresh
+            # Construct the endpoint properly for the _request method
+            if record.get('id'):
+                endpoint = f"{self.endpoint}/{record.get('id')}"
+            else:
+                endpoint = self.endpoint
+                
+            response = self._request(
+                http_method=http_method,
+                endpoint=endpoint,
+                request_data=payload
             )
             self.logger.info(f"Response status: {response.status_code}")
             self.logger.info(f"Response body: {response.text}")
