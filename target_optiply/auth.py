@@ -1,120 +1,130 @@
-"""Authentication module for Optiply target."""
+"""Optiply authentication module."""
+
+from __future__ import annotations
 
 import json
-import os
-from datetime import datetime
-from typing import Optional
-from base64 import b64encode
-from typing import Any, Dict, Optional
-
 import logging
+import os
 import requests
+from datetime import datetime, timedelta
+from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
 
-# Get the dashboard URL from environment variable
-OPTIPLY_DASHBOARD_URL = os.environ.get("optiply_dashboard_url", "https://dashboard.optiply.nl/api")
-AUTH_URL = f"{OPTIPLY_DASHBOARD_URL}/auth/oauth/token"
-
 class OptiplyAuthenticator:
-    """API Authenticator for OAuth 2.0 flows."""
+    """API Authenticator for OAuth 2.0 password flow."""
 
-    def __init__(self, config: Dict[str, Any]) -> None:
+    def __init__(
+        self,
+        config: Dict[str, Any],
+        auth_endpoint: Optional[str] = None,
+    ) -> None:
         """Initialize authenticator.
 
         Args:
-            config: The configuration dictionary.
+            config: Configuration dictionary containing credentials.
+            auth_endpoint: Optional custom auth endpoint.
         """
         self._config = config
+        self._auth_endpoint = auth_endpoint or os.environ.get(
+            "optiply_dashboard_url", "https://dashboard.optiply.nl/api"
+        ) + "/auth/oauth/token"
         self._access_token = None
         self._token_expires_at = None
         self._refresh_token = None
 
     @property
-    def auth_headers(self) -> dict:
-        """Get the authentication headers.
+    def auth_headers(self) -> Dict[str, str]:
+        """Get authentication headers.
 
         Returns:
-            The authentication headers.
+            Dictionary containing Authorization header with Bearer token.
         """
         if not self.is_token_valid():
             self.update_access_token()
-        result = {}
-        result["Authorization"] = f"Bearer {self._access_token}"
-        return result
+        
+        return {
+            "Authorization": f"Bearer {self._access_token}"
+        }
 
-    def is_token_valid(self) -> bool:
-        """Check if the current token is valid.
+    @property
+    def oauth_request_body(self) -> Dict[str, str]:
+        """Get OAuth request body for password flow.
 
         Returns:
-            True if the token is valid, False otherwise.
+            Dictionary containing OAuth request parameters.
         """
-        if not self._access_token or not self._token_expires_at:
+        return {
+            "grant_type": "password",
+            "username": self._config["username"],
+            "password": self._config["password"],
+            "client_id": self._config["client_id"],
+            "client_secret": self._config["client_secret"]
+        }
+
+    def is_token_valid(self) -> bool:
+        """Check if the current access token is still valid.
+
+        Returns:
+            True if token is valid, False otherwise.
+        """
+        if not self._access_token:
             return False
-        # Add a 5-minute buffer before expiration
-        return datetime.now().timestamp() < (self._token_expires_at - 300)
+        
+        if not self._token_expires_at:
+            return False
+        
+        # Check if token expires within the next 2 minutes
+        now = datetime.utcnow()
+        return self._token_expires_at > (now + timedelta(minutes=2))
 
     def update_access_token(self) -> None:
-        """Update the access token."""
+        """Update the access token by making a request to the auth endpoint."""
+        logger.info("Starting token refresh process")
+        
         try:
-            logger.info("Starting token refresh process")
+            # Prepare Basic Auth headers
+            client_id = self._config["client_id"]
+            client_secret = self._config["client_secret"]
+            import base64
+            basic_auth = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
             
-            # Get the credentials from config
-            client_id = self._config.get("client_id")
-            client_secret = self._config.get("client_secret")
-            username = self._config.get("username")
-            password = self._config.get("password")
-
-            if not all([client_id, client_secret, username, password]):
-                raise ValueError("Missing required credentials in config")
-
-            # Create basic auth token
-            auth_string = f"{client_id}:{client_secret}"
-            basic_token = b64encode(auth_string.encode()).decode()
-
-            logger.info(f"Making token request to: {AUTH_URL}")
+            headers = {
+                "Authorization": f"Basic {basic_auth}",
+                "Content-Type": "application/x-www-form-urlencoded"
+            }
+            
+            logger.info(f"Making token request to: {self._auth_endpoint}")
             
             # Make the token request
             response = requests.post(
-                f"{AUTH_URL}?grant_type=password",
-                headers={
-                    "Authorization": f"Basic {basic_token}",
-                    "Content-Type": "application/x-www-form-urlencoded"
-                },
-                data={
-                    "username": username,
-                    "password": password
-                }
+                self._auth_endpoint,
+                data=self.oauth_request_body,
+                headers=headers,
+                timeout=30
             )
-            response.raise_for_status()
-
-            # Parse the response
+            
+            if response.status_code != 200:
+                raise Exception(f"Token request failed with status {response.status_code}: {response.text}")
+            
             token_data = response.json()
-            self._access_token = token_data.get("access_token")
+            
+            # Update token information
+            self._access_token = token_data["access_token"]
             self._refresh_token = token_data.get("refresh_token")
+            
+            # Calculate expiration time
             expires_in = token_data.get("expires_in", 3600)  # Default to 1 hour
-            self._token_expires_at = datetime.now().timestamp() + expires_in
-
+            self._token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in)
+            
             logger.info("Successfully updated access token")
-
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error updating access token: {str(e)}")
-            raise
+            
         except Exception as e:
-            logger.error(f"Unexpected error updating access token: {str(e)}")
+            logger.error(f"Failed to update access token: {str(e)}")
             raise
-
-    def get_auth_session(self) -> None:
-        """Get the authentication session.
-
-        Returns:
-            None since we use headers for authentication.
-        """
-        return None
 
     def force_refresh(self) -> None:
-        """Force a token refresh by clearing current token."""
-        logger.info("Forcing token refresh")
+        """Force a token refresh regardless of current token validity."""
         self._access_token = None
         self._token_expires_at = None
         self.update_access_token()

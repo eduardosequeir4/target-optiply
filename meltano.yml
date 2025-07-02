@@ -17,9 +17,31 @@ plugins:
     config:
       start_date: '2010-01-01T00:00:00Z'
     settings:
-    # TODO: To configure using Meltano, declare settings and their types here:
     - name: username
-    - name: password
+      description: "Optiply API username"
+      kind: string
+      required: true
+    - name: client_id
+      description: "Optiply API client ID"
+      kind: string
+      required: true
+    - name: client_secret
+      description: "Optiply API client secret"
       kind: password
+      required: true
+    - name: password
+      description: "Optiply API password"
+      kind: password
+      required: true
+    - name: account_id
+      description: "Optiply account ID"
+      kind: integer
+    - name: coupling_id
+      description: "Optiply coupling ID"
+      kind: integer
     - name: start_date
+      description: "Start date for data sync"
       value: '2010-01-01T00:00:00Z'
+    - name: hotglue_metadata
+      description: "Hotglue metadata configuration"
+      kind: object

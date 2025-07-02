@@ -1,10 +1,6 @@
-[build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
-
 [tool.poetry]
 name = "target-optiply"
-version = "0.1.0"
+version = "0.0.1"
 description = "`target-optiply` is a Singer target for Optiply, built with the Meltano Singer SDK."
 readme = "README.md"
 authors = ["Eduardo Sequeira <eduardosequeira@optiply.nl>"]
@@ -13,24 +9,19 @@ keywords = [
     "Optiply",
 ]
 license = "Apache-2.0"
-packages = [
-    { include = "target_optiply" }
-]
 
 [tool.poetry.dependencies]
-python = ">=3.7.1,<3.12"
-singer-sdk = ">=0.34.0"
-requests = ">=2.31.0"
-backoff = ">=2.0.0"
+python = "<3.12,>=3.7.1"
+singer-sdk = "^0.34.0"
+requests = "^2.31.0"
+backoff = "^2.2.1"
+python-dateutil = "^2.8.2"
 
-[tool.poetry.group.dev.dependencies]
+[tool.poetry.dev-dependencies]
 pytest = "^7.4.0"
 
 [tool.poetry.extras]
 s3 = ["fs-s3fs"]
-
-[tool.poetry.scripts]
-target-optiply = "target_optiply.target:TargetOptiply.cli"
 
 [tool.ruff]
 ignore = [
@@ -49,3 +40,11 @@ known-first-party = ["target_optiply"]
 
 [tool.ruff.pydocstyle]
 convention = "google"
+
+[build-system]
+requires = ["poetry-core>=1.0.8"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+# CLI declaration
+target-optiply = 'target_optiply.target:TargetOptiply.cli'

@@ -107,12 +107,16 @@ class BaseOptiplySink(OptiplySink):
             Dictionary of attributes for the API request
         """
         attributes = {}
+        from datetime import datetime
+        from decimal import Decimal
         for record_field, api_field in field_mappings.items():
             if record_field in record and record[record_field] is not None:
                 value = record[record_field]
                 # Handle datetime objects
                 if isinstance(value, datetime):
                     value = value.isoformat()
+                elif isinstance(value, Decimal):
+                    value = float(value)
                 attributes[api_field] = value
         return attributes
 
@@ -136,12 +140,14 @@ class BaseOptiplySink(OptiplySink):
         # Add any additional attributes from the record
         self._add_additional_attributes(record, attributes)
 
-        return {
+        payload = {
             "data": {
                 "type": self.endpoint,
                 "attributes": attributes
             }
         }
+        self.logger.info(f"Final payload: {json.dumps(payload, indent=2)}")
+        return payload
 
     def _add_additional_attributes(self, record: Dict, attributes: Dict) -> None:
         """Add any additional attributes that are not covered by field mappings.
@@ -332,8 +338,21 @@ class BaseOptiplySink(OptiplySink):
             A hash string representing the record's state.
         """
         import hashlib
+        from datetime import datetime
+        from decimal import Decimal
+        
+        # Create a serializable copy of the record
+        serializable_record = {}
+        for key, value in record.items():
+            if isinstance(value, datetime):
+                serializable_record[key] = value.isoformat()
+            elif isinstance(value, Decimal):
+                serializable_record[key] = float(value)
+            else:
+                serializable_record[key] = value
+        
         # Create a string representation of the record's key fields
-        key_fields = sorted(record.items())
+        key_fields = sorted(serializable_record.items())
         record_str = json.dumps(key_fields, sort_keys=True)
         # Generate SHA-256 hash
         return hashlib.sha256(record_str.encode()).hexdigest()
@@ -394,6 +413,29 @@ class ProductsSink(BaseOptiplySink):
             The list of mandatory fields.
         """
         return ["name", "stockLevel", "unlimitedStock"]
+
+    def _add_additional_attributes(self, record: Dict, attributes: Dict) -> None:
+        """Add any additional attributes that are not covered by field mappings.
+        
+        This method can be overridden by subclasses to add custom attributes.
+        
+        Args:
+            record: The record to transform
+            attributes: The attributes dictionary to update
+        """
+        # Handle resumingPurchase field - convert boolean to string array
+        if "resumingPurchase" in record and record["resumingPurchase"] is not None:
+            if record["resumingPurchase"]:
+                attributes["resumingPurchase"] = ["true"]
+            else:
+                attributes["resumingPurchase"] = ["false"]
+        
+        # Handle notBeingBought field - convert boolean to string array
+        if "notBeingBought" in record and record["notBeingBought"] is not None:
+            if record["notBeingBought"]:
+                attributes["notBeingBought"] = ["true"]
+            else:
+                attributes["notBeingBought"] = ["false"]
 
 class SupplierSink(BaseOptiplySink):
     """Optiply target sink class for suppliers."""

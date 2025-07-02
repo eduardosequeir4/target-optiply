@@ -170,3 +170,24 @@ class OptiplySink(RecordSink):
             query_string = "&".join(f"{k}={v}" for k, v in params.items())
             url = f"{url}?{query_string}"
         return url
+
+    def process_record(self, record: dict, context: dict) -> None:
+        """Process the record.
+
+        Args:
+            record: Individual record in the stream.
+            context: Stream partition or context dictionary.
+        """
+        # This method will be overridden by specific sink implementations
+        pass
+
+    def get_url(self, context: dict = None) -> str:
+        """Get the base URL for the API.
+        
+        Args:
+            context: Optional context dictionary
+            
+        Returns:
+            The base URL
+        """
+        return self.base_url

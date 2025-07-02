@@ -9,7 +9,7 @@ import json
 import os
 
 from target_optiply.sinks import (
-    OptiplySink,
+    BaseOptiplySink,
     ProductsSink,
     SupplierSink,
     SupplierProductSink,
@@ -30,21 +30,25 @@ class TargetOptiply(Target):
             "username",
             th.StringType,
             description="Optiply API username",
+            required=True,
         ),
         th.Property(
             "client_id",
             th.StringType,
             description="Optiply API client ID",
+            required=True,
         ),
         th.Property(
             "client_secret",
             th.StringType,
             description="Optiply API client secret",
+            required=True,
         ),
         th.Property(
             "password",
             th.StringType,
             description="Optiply API password",
+            required=True,
         ),
         th.Property(
             "account_id",
@@ -79,9 +83,7 @@ class TargetOptiply(Target):
         ),
     ).to_dict()
 
-    default_sink_class = OptiplySink
-
-    def get_sink_class(self, stream_name: str) -> type[OptiplySink | ProductsSink | SupplierSink | SupplierProductSink | BuyOrderLineSink | SellOrderSink | SellOrderLineSink]:
+    def get_sink_class(self, stream_name: str):
         """Get sink class for the given stream name."""
         if stream_name == "BuyOrders":
             return BuyOrderSink
@@ -98,7 +100,8 @@ class TargetOptiply(Target):
         elif stream_name == "SellOrderLines":
             return SellOrderLineSink
         else:
-            raise ValueError(f"Unsupported stream: {stream_name}")
+            # Return base sink for unknown streams
+            return BaseOptiplySink
 
     def process_batch(self, context: Dict) -> None:
         """Process a batch of records."""
@@ -143,16 +146,20 @@ class TargetOptiply(Target):
         self.logger.info(f"  Total records processed: {total_success + total_failure}")
         self.logger.info("======================\n")
 
-        # Save state to file
+        # Create state with job results
         state = {
             "bookmarks": export_details,
             "summary": export_summary
         }
         
-        # Save state to target_state.json
-        state_file = os.path.join(os.getcwd(), "target_state.json")
+        # Save state to target_state.json (Hotglue-style)
+        state_file = os.path.join(os.getcwd(), "target-state.json")
         with open(state_file, 'w') as f:
             json.dump(state, f, indent=2)
+        
+        # Emit state message to stdout (Singer protocol)
+        self.state = state
+        self._write_state_message()
         
         # Update job-details.json if it exists
         job_details_file = os.path.join(os.getcwd(), "job-details.json")
